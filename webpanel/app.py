@@ -292,7 +292,9 @@ def api_service(action):
 def api_users():
     host = PUBLIC_HOST or request.host.split(":", 1)[0]
     users = []
-    for item in load_users():
+    # New users are appended to mudb.json; reverse only the API view so the
+    # newest entry appears first without changing the on-disk user order.
+    for item in reversed(load_users()):
         result = public_user(item)
         result["ssr_link"] = ssr_link(item, host)
         users.append(result)
