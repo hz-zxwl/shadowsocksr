@@ -46,6 +46,19 @@
   color: var(--muted);
 }
 
+.table-toggle input:checked + .toggle {
+  background: var(--green);
+}
+
+.table-toggle input:checked + .toggle::after {
+  transform: translateX(18px);
+}
+
+.table-toggle input:checked ~ em {
+  color: #168850;
+  font-weight: 650;
+}
+
 @media (max-width: 760px) {
   .user-toolbar {
     width: 100%;

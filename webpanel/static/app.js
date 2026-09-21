@@ -27,6 +27,24 @@ function toast(message, error = false) {
   setTimeout(() => node.classList.add("hidden"), 2600);
 }
 
+async function copyText(value) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(value);
+    return true;
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+  const copied = document.execCommand("copy");
+  textarea.remove();
+  return copied;
+}
+
 async function loadStatus() {
   try {
     const data = await api("/api/status");
@@ -148,8 +166,11 @@ $("#userRows").addEventListener("click", async event => {
   const edit = event.target.closest("[data-edit]"); const reset = event.target.closest("[data-reset]"); const remove = event.target.closest("[data-delete]"); const copy = event.target.closest("[data-copy]");
   if (copy) {
     const user = state.users.find(item => item.port === Number(copy.dataset.copy));
-    try { await navigator.clipboard.writeText(user.ssr_link); toast("SSR 链接已复制"); }
-    catch (_) { window.prompt("复制下面的 SSR 链接：", user.ssr_link); }
+    try {
+      const copied = await copyText(user.ssr_link);
+      if (!copied) throw new Error("copy failed");
+      toast("SSR 链接已复制");
+    } catch (_) { toast("复制失败，请检查浏览器剪贴板权限", true); }
   }
   if (edit) openUser(state.users.find(user => user.port === Number(edit.dataset.edit)));
   if (reset && confirm("确定清零该用户的上传和下载流量吗？")) { try { await api(`/api/users/${reset.dataset.reset}/reset-traffic`, { method: "POST", body: "{}" }); await Promise.all([loadUsers(), loadStatus()]); toast("流量已清零"); } catch (error) { toast(error.message, true); } }
