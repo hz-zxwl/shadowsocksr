@@ -22,7 +22,8 @@ cd /opt/shadowsocksr
 sudo bash webpanel/install.sh
 ```
 
-安装程序会询问面板账号、密码和 SSR 的 systemd 服务名，然后让面板监听在 `127.0.0.1:6677`。
+安装程序会询问面板账号、密码和 SSR 服务名。你当前的 CentOS 7 服务器会使用
+`/etc/init.d/ssrmu` 控制服务、读取 `/usr/local/shadowsocksr/ssserver.log`，并监听测试端口 `0.0.0.0:65432`。
 
 请参考 `deploy/nginx.conf.example` 配置带 HTTPS 的 Nginx 反向代理。不要把 6677 端口直接开放到公网。
 
@@ -51,7 +52,11 @@ export SSR_PANEL_DRY_RUN=1
 | `SSR_PANEL_PASSWORD` | 管理员密码 | 无，未配置时禁止登录 |
 | `SSR_PANEL_PASSWORD_HASH` | Werkzeug 密码哈希，可替代明文密码 | 无 |
 | `SSR_MUDB_PATH` | SSR 用户数据库路径 | 仓库根目录的 `mudb.json` |
-| `SSR_SERVICE_NAME` | systemd 中的 SSR 服务名 | `shadowsocksr` |
+| `SSR_SERVICE_NAME` | SSR 服务名 | `shadowsocksr` |
+| `SSR_CONTROL_SCRIPT` | SysV 服务控制脚本；设置后优先于 systemd | 无 |
+| `SSR_LOG_PATH` | SSR 文本日志路径；设置后优先于 journalctl | 无 |
+| `SSR_PANEL_BIND` | 面板监听地址 | `127.0.0.1` |
+| `SSR_PANEL_PORT` | 面板监听端口 | `6677` |
 | `SSR_PANEL_HTTPS` | HTTPS 反代时设为 `1`，启用 Secure Cookie | `0` |
 | `SSR_PANEL_DRY_RUN` | 设为 `1` 时不执行服务控制命令 | `0` |
 

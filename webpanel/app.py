@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """Small, self-contained web control panel for ShadowsocksR manyuser."""
 
-from __future__ import annotations
-
 import json
 import os
 import re
@@ -22,6 +20,8 @@ from werkzeug.security import check_password_hash
 BASE_DIR = Path(__file__).resolve().parent
 MUDB_PATH = Path(os.environ.get("SSR_MUDB_PATH", str(BASE_DIR.parent / "mudb.json"))).resolve()
 SERVICE_NAME = os.environ.get("SSR_SERVICE_NAME", "shadowsocksr")
+CONTROL_SCRIPT = os.environ.get("SSR_CONTROL_SCRIPT", "").strip()
+LOG_PATH = os.environ.get("SSR_LOG_PATH", "").strip()
 LOG_LINES = max(20, min(int(os.environ.get("SSR_LOG_LINES", "200")), 1000))
 USERNAME = os.environ.get("SSR_PANEL_USERNAME", "admin")
 PASSWORD = os.environ.get("SSR_PANEL_PASSWORD")
@@ -31,6 +31,8 @@ DRY_RUN = os.environ.get("SSR_PANEL_DRY_RUN", "0") == "1"
 
 if not re.fullmatch(r"[A-Za-z0-9_.@-]{1,128}", SERVICE_NAME):
     raise RuntimeError("SSR_SERVICE_NAME contains unsupported characters")
+if CONTROL_SCRIPT and not re.fullmatch(r"/etc/(?:rc\.d/)?init\.d/[A-Za-z0-9_.@-]+", CONTROL_SCRIPT):
+    raise RuntimeError("SSR_CONTROL_SCRIPT must point to a script under /etc/init.d")
 
 app = Flask(__name__)
 app.secret_key = SECRET or secrets.token_hex(32)
@@ -67,13 +69,13 @@ def require_csrf():
         abort(403, "CSRF validation failed")
 
 
-def password_valid(candidate: str) -> bool:
+def password_valid(candidate):
     if PASSWORD_HASH:
         return check_password_hash(PASSWORD_HASH, candidate)
     return bool(PASSWORD) and secrets.compare_digest(PASSWORD, candidate)
 
 
-def load_users() -> list[dict]:
+def load_users():
     with _mudb_lock:
         if not MUDB_PATH.exists():
             return []
@@ -84,7 +86,7 @@ def load_users() -> list[dict]:
         return data
 
 
-def save_users(users: list[dict]) -> None:
+def save_users(users):
     with _mudb_lock:
         MUDB_PATH.parent.mkdir(parents=True, exist_ok=True)
         fd, temp_name = tempfile.mkstemp(prefix="mudb-", suffix=".json", dir=str(MUDB_PATH.parent))
@@ -102,7 +104,7 @@ def save_users(users: list[dict]) -> None:
                 os.unlink(temp_name)
 
 
-def int_value(data: dict, key: str, minimum: int, maximum: int, default: int = 0) -> int:
+def int_value(data, key, minimum, maximum, default=0):
     try:
         value = int(data.get(key, default))
     except (TypeError, ValueError):
@@ -112,14 +114,14 @@ def int_value(data: dict, key: str, minimum: int, maximum: int, default: int = 0
     return value
 
 
-def clean_text(data: dict, key: str, max_len: int, default: str = "") -> str:
+def clean_text(data, key, max_len, default=""):
     value = str(data.get(key, default)).strip()
     if len(value) > max_len or any(ord(char) < 32 for char in value):
         raise ValueError(f"invalid {key}")
     return value
 
 
-def normalize_user(data: dict, existing: dict | None = None) -> dict:
+def normalize_user(data, existing=None):
     current = dict(existing or {})
     port = int_value(data, "port", 1, 65535, current.get("port", 0))
     transfer_gb = int_value(data, "transfer_gb", 0, 1024 * 1024, int(current.get("transfer_enable", 0) / 1024**3))
@@ -145,32 +147,38 @@ def normalize_user(data: dict, existing: dict | None = None) -> dict:
     return current
 
 
-def run_systemctl(action: str) -> tuple[bool, str]:
+def service_command(action):
     if action not in {"start", "stop", "restart"}:
         raise ValueError("unsupported service action")
     if DRY_RUN:
-        return True, f"dry-run: systemctl {action} {SERVICE_NAME}"
-    completed = subprocess.run(
-        ["systemctl", action, SERVICE_NAME], capture_output=True, text=True, timeout=20, check=False
-    )
+        return True, "dry-run: service action %s" % action
+    command = [CONTROL_SCRIPT, action] if CONTROL_SCRIPT else ["systemctl", action, SERVICE_NAME]
+    completed = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               universal_newlines=True, timeout=20, check=False)
     output = (completed.stdout or completed.stderr or "").strip()
     return completed.returncode == 0, output
 
 
-def service_status() -> dict:
+def service_status():
     if DRY_RUN:
         return {"active": True, "status": "running", "detail": "dry-run"}
     try:
-        completed = subprocess.run(
-            ["systemctl", "is-active", SERVICE_NAME], capture_output=True, text=True, timeout=5, check=False
-        )
+        if CONTROL_SCRIPT:
+            completed = subprocess.run([CONTROL_SCRIPT, "status"], stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE, universal_newlines=True,
+                                       timeout=5, check=False)
+            detail = (completed.stdout or completed.stderr).strip()
+            return {"active": completed.returncode == 0, "status": "running" if completed.returncode == 0 else "stopped", "detail": detail}
+        completed = subprocess.run(["systemctl", "is-active", SERVICE_NAME], stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE, universal_newlines=True,
+                                   timeout=5, check=False)
         status = completed.stdout.strip() or "unknown"
         return {"active": completed.returncode == 0, "status": status}
     except (OSError, subprocess.TimeoutExpired) as exc:
         return {"active": False, "status": "unavailable", "detail": str(exc)}
 
 
-def proc_metrics() -> dict:
+def proc_metrics():
     load = os.getloadavg() if hasattr(os, "getloadavg") else (0, 0, 0)
     memory_total = memory_available = 0
     try:
@@ -193,7 +201,7 @@ def proc_metrics() -> dict:
     }
 
 
-def public_user(user: dict) -> dict:
+def public_user(user):
     result = dict(user)
     result["used"] = int(user.get("u", 0)) + int(user.get("d", 0))
     result["transfer_gb"] = round(int(user.get("transfer_enable", 0)) / 1024**3, 3)
@@ -247,10 +255,10 @@ def api_status():
 
 @app.post("/api/service/<action>")
 @login_required
-def api_service(action: str):
+def api_service(action):
     require_csrf()
     try:
-        ok, output = run_systemctl(action)
+        ok, output = service_command(action)
     except ValueError as exc:
         return jsonify(error=str(exc)), 400
     return jsonify(ok=ok, output=output), (200 if ok else 500)
@@ -281,7 +289,7 @@ def api_users_create():
 
 @app.put("/api/users/<int:port>")
 @login_required
-def api_users_update(port: int):
+def api_users_update(port):
     require_csrf()
     try:
         payload = request.get_json(force=True)
@@ -301,7 +309,7 @@ def api_users_update(port: int):
 
 @app.delete("/api/users/<int:port>")
 @login_required
-def api_users_delete(port: int):
+def api_users_delete(port):
     require_csrf()
     users = load_users()
     kept = [item for item in users if int(item.get("port", 0)) != port]
@@ -313,7 +321,7 @@ def api_users_delete(port: int):
 
 @app.post("/api/users/<int:port>/reset-traffic")
 @login_required
-def api_users_reset(port: int):
+def api_users_reset(port):
     require_csrf()
     users = load_users()
     for item in users:
@@ -331,10 +339,15 @@ def api_logs():
     if DRY_RUN:
         return jsonify(logs="测试模式：暂无服务日志。")
     try:
-        completed = subprocess.run(
-            ["journalctl", "-u", SERVICE_NAME, "-n", str(LOG_LINES), "--no-pager"],
-            capture_output=True, text=True, timeout=10, check=False,
-        )
+        if LOG_PATH:
+            path = Path(LOG_PATH).resolve()
+            if not path.is_file():
+                return jsonify(logs="日志文件尚未生成：%s" % path)
+            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()[-LOG_LINES:]
+            return jsonify(logs="\n".join(lines)[-100_000:])
+        completed = subprocess.run(["journalctl", "-u", SERVICE_NAME, "-n", str(LOG_LINES), "--no-pager"],
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                   universal_newlines=True, timeout=10, check=False)
         return jsonify(logs=(completed.stdout or completed.stderr)[-100_000:])
     except (OSError, subprocess.TimeoutExpired) as exc:
         return jsonify(error=str(exc)), 500
@@ -346,4 +359,5 @@ def healthz():
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=int(os.environ.get("SSR_PANEL_PORT", "6677")))
+    app.run(host=os.environ.get("SSR_PANEL_BIND", "127.0.0.1"),
+            port=int(os.environ.get("SSR_PANEL_PORT", "6677")))

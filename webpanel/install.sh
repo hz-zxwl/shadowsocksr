@@ -12,7 +12,18 @@ VENV_DIR="${PANEL_DIR}/.venv"
 ENV_FILE="/etc/ssr-panel.env"
 SERVICE_FILE="/etc/systemd/system/ssr-web-panel.service"
 
-command -v python3 >/dev/null 2>&1 || { echo "缺少 python3，请先安装。"; exit 1; }
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "正在安装 Python 3…"
+  if command -v yum >/dev/null 2>&1; then
+    yum install -y python3 || { yum install -y epel-release; yum install -y python36; }
+  elif command -v apt-get >/dev/null 2>&1; then
+    apt-get update
+    apt-get install -y python3 python3-venv
+  else
+    echo "无法识别系统的软件包管理器，请先安装 Python 3。"
+    exit 1
+  fi
+fi
 
 read -r -p "面板用户名 [admin]: " PANEL_USER
 PANEL_USER="${PANEL_USER:-admin}"
@@ -22,14 +33,18 @@ if [[ ${#PANEL_PASSWORD} -lt 10 ]]; then
   echo "密码长度不能少于 10 位。"
   exit 1
 fi
-read -r -p "SSR systemd 服务名 [shadowsocksr]: " SSR_SERVICE
-SSR_SERVICE="${SSR_SERVICE:-shadowsocksr}"
+read -r -p "SSR 服务名 [ssrmu]: " SSR_SERVICE
+SSR_SERVICE="${SSR_SERVICE:-ssrmu}"
 if [[ ! "${PANEL_USER}" =~ ^[A-Za-z0-9_.@-]{1,128}$ ]] || [[ ! "${SSR_SERVICE}" =~ ^[A-Za-z0-9_.@-]{1,128}$ ]]; then
   echo "用户名或服务名包含不支持的字符。"
   exit 1
 fi
 
-python3 -m venv "${VENV_DIR}"
+if ! python3 -m venv "${VENV_DIR}"; then
+  python3 -m ensurepip --upgrade || true
+  python3 -m pip install --upgrade virtualenv
+  python3 -m virtualenv "${VENV_DIR}"
+fi
 "${VENV_DIR}/bin/pip" install --disable-pip-version-check -r "${PANEL_DIR}/requirements.txt"
 
 PANEL_SECRET="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
@@ -42,6 +57,10 @@ printf '%s\n' \
   "SSR_PANEL_PASSWORD_HASH=${PANEL_PASSWORD_HASH}" \
   "SSR_MUDB_PATH=${SSR_DIR}/mudb.json" \
   "SSR_SERVICE_NAME=${SSR_SERVICE}" \
+  "SSR_CONTROL_SCRIPT=/etc/init.d/ssrmu" \
+  "SSR_LOG_PATH=${SSR_DIR}/ssserver.log" \
+  "SSR_PANEL_BIND=0.0.0.0" \
+  "SSR_PANEL_PORT=65432" \
   > "${ENV_FILE}"
 
 sed \
@@ -53,6 +72,6 @@ systemctl daemon-reload
 systemctl enable --now ssr-web-panel
 
 echo
-echo "SSR Panel 已启动：127.0.0.1:6677"
-echo "请通过 Nginx + HTTPS 反向代理访问，不要把 6677 端口直接暴露到公网。"
+echo "SSR Panel 已启动：http://服务器IP:65432"
+echo "测试结束后建议配置 HTTPS 或限制 65432 端口的访问来源。"
 echo "环境配置：${ENV_FILE}"
