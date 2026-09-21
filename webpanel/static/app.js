@@ -52,11 +52,14 @@ async function loadStatus() {
 function renderUsers() {
   const rows = $("#userRows");
   rows.innerHTML = "";
-  $("#emptyUsers").classList.toggle("hidden", state.users.length > 0);
-  for (const user of state.users) {
+  const keyword = $("#userSearch").value.trim().toLocaleLowerCase();
+  const visibleUsers = state.users.filter(user => String(user.user || "").toLocaleLowerCase().includes(keyword));
+  $("#emptyUsers").textContent = keyword ? "没有找到匹配的客户备注。" : "暂无用户，点击“新增用户”开始。";
+  $("#emptyUsers").classList.toggle("hidden", visibleUsers.length > 0);
+  for (const user of visibleUsers) {
     const tr = document.createElement("tr");
     const percent = user.transfer_enable ? Math.min(100, Math.round(user.used / user.transfer_enable * 100)) : 0;
-    tr.innerHTML = `<td><strong>${escapeHtml(user.user || "-")}</strong></td><td><code>${user.port}</code></td><td>${escapeHtml(user.method || "-")}<br><small>${escapeHtml(user.protocol || "-")} · ${escapeHtml(user.obfs || "-")}</small></td><td>${humanBytes(user.used)} / ${humanBytes(user.transfer_enable)}<br><small>${percent}%</small></td><td><span class="tag ${user.enable ? "ok" : "bad"}">${user.enable ? "启用" : "停用"}</span></td><td class="right"><div class="actions"><button class="action-button" data-edit="${user.port}">编辑</button><button class="action-button" data-reset="${user.port}">清流量</button><button class="action-button delete" data-delete="${user.port}">删除</button></div></td>`;
+    tr.innerHTML = `<td><strong>${escapeHtml(user.user || "-")}</strong></td><td><code>${user.port}</code></td><td>${escapeHtml(user.method || "-")}<br><small>${escapeHtml(user.protocol || "-")} · ${escapeHtml(user.obfs || "-")}</small></td><td>${humanBytes(user.used)} / ${humanBytes(user.transfer_enable)}<br><small>${percent}%</small></td><td><label class="table-toggle" title="${user.enable ? "点击关闭" : "点击启用"}"><input type="checkbox" data-toggle="${user.port}" ${user.enable ? "checked" : ""}><span class="toggle"></span><em>${user.enable ? "启用" : "关闭"}</em></label></td><td class="right"><div class="actions"><button class="action-button" data-copy="${user.port}">SSR链接</button><button class="action-button" data-edit="${user.port}">编辑</button><button class="action-button" data-reset="${user.port}">清流量</button><button class="action-button delete" data-delete="${user.port}">删除</button></div></td>`;
     rows.appendChild(tr);
   }
 }
@@ -129,6 +132,7 @@ $$('.nav-item[data-view]').forEach(button => button.addEventListener('click', ()
 
 $("#menuButton").addEventListener("click", () => $(".sidebar").classList.toggle("open"));
 $("#addUserButton").addEventListener("click", () => openUser());
+$("#userSearch").addEventListener("input", renderUsers);
 $("#randomPassword").addEventListener("click", () => $("#userPassword").value = randomPassword());
 $("#userForm").addEventListener("submit", saveUser);
 $$('[data-close-modal]').forEach(item => item.addEventListener('click', closeModal));
@@ -141,10 +145,26 @@ $$('.service-action').forEach(button => button.addEventListener('click', async (
 }));
 
 $("#userRows").addEventListener("click", async event => {
-  const edit = event.target.closest("[data-edit]"); const reset = event.target.closest("[data-reset]"); const remove = event.target.closest("[data-delete]");
+  const edit = event.target.closest("[data-edit]"); const reset = event.target.closest("[data-reset]"); const remove = event.target.closest("[data-delete]"); const copy = event.target.closest("[data-copy]");
+  if (copy) {
+    const user = state.users.find(item => item.port === Number(copy.dataset.copy));
+    try { await navigator.clipboard.writeText(user.ssr_link); toast("SSR 链接已复制"); }
+    catch (_) { window.prompt("复制下面的 SSR 链接：", user.ssr_link); }
+  }
   if (edit) openUser(state.users.find(user => user.port === Number(edit.dataset.edit)));
   if (reset && confirm("确定清零该用户的上传和下载流量吗？")) { try { await api(`/api/users/${reset.dataset.reset}/reset-traffic`, { method: "POST", body: "{}" }); await Promise.all([loadUsers(), loadStatus()]); toast("流量已清零"); } catch (error) { toast(error.message, true); } }
   if (remove && confirm("确定删除该用户吗？此操作无法撤销。")) { try { await api(`/api/users/${remove.dataset.delete}`, { method: "DELETE", body: "{}" }); await Promise.all([loadUsers(), loadStatus()]); toast("用户已删除"); } catch (error) { toast(error.message, true); } }
+});
+
+$("#userRows").addEventListener("change", async event => {
+  const toggle = event.target.closest("[data-toggle]");
+  if (!toggle) return;
+  toggle.disabled = true;
+  try {
+    await api(`/api/users/${toggle.dataset.toggle}/toggle`, { method: "POST", body: JSON.stringify({ enable: toggle.checked }) });
+    await Promise.all([loadUsers(), loadStatus()]);
+    toast(toggle.checked ? "用户已启用" : "用户已关闭");
+  } catch (error) { toggle.checked = !toggle.checked; toggle.disabled = false; toast(error.message, true); }
 });
 
 loadStatus(); setInterval(loadStatus, 15000);

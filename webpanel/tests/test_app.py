@@ -70,6 +70,21 @@ class PanelTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("dry-run", response.get_json()["output"])
 
+    def test_toggle_and_ssr_link(self):
+        token = self.login()
+        headers = {"X-CSRF-Token": token}
+        payload = {
+            "user": "自用", "port": 40002, "passwd": "zhwl40002",
+            "method": "none", "protocol": "auth_chain_a", "obfs": "plain",
+            "transfer_gb": 50, "enable": True,
+        }
+        self.client.post("/api/users", json=payload, headers=headers)
+        response = self.client.get("/api/users", headers={"Host": "ssr380.zxwl.xyz:65432"})
+        link = response.get_json()["users"][0]["ssr_link"]
+        self.assertTrue(link.startswith("ssr://"))
+        response = self.client.post("/api/users/40002/toggle", json={"enable": False}, headers=headers)
+        self.assertEqual(response.get_json()["enable"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

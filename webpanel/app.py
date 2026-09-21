@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Small, self-contained web control panel for ShadowsocksR manyuser."""
 
+import base64
 import json
 import os
 import re
@@ -22,6 +23,7 @@ MUDB_PATH = Path(os.environ.get("SSR_MUDB_PATH", str(BASE_DIR.parent / "mudb.jso
 SERVICE_NAME = os.environ.get("SSR_SERVICE_NAME", "shadowsocksr")
 CONTROL_SCRIPT = os.environ.get("SSR_CONTROL_SCRIPT", "").strip()
 LOG_PATH = os.environ.get("SSR_LOG_PATH", "").strip()
+PUBLIC_HOST = os.environ.get("SSR_PUBLIC_HOST", "").strip()
 LOG_LINES = max(20, min(int(os.environ.get("SSR_LOG_LINES", "200")), 1000))
 USERNAME = os.environ.get("SSR_PANEL_USERNAME", "admin")
 PASSWORD = os.environ.get("SSR_PANEL_PASSWORD")
@@ -211,6 +213,24 @@ def public_user(user):
     return result
 
 
+def base64_url(value):
+    raw = str(value or "").encode("utf-8")
+    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+
+def ssr_link(user, host):
+    core = "%s:%s:%s:%s:%s:%s" % (
+        host, user.get("port", ""), user.get("protocol", "origin"),
+        user.get("method", "none"), user.get("obfs", "plain"),
+        base64_url(user.get("passwd", "")),
+    )
+    params = ["obfsparam=" + base64_url(user.get("obfs_param", ""))]
+    if user.get("protocol_param"):
+        params.append("protoparam=" + base64_url(user.get("protocol_param", "")))
+    params.append("remarks=" + base64_url(user.get("user", "")))
+    return "ssr://" + base64_url(core + "/?" + "&".join(params))
+
+
 @app.get("/login")
 def login():
     if session.get("authenticated"):
@@ -270,7 +290,13 @@ def api_service(action):
 @app.get("/api/users")
 @login_required
 def api_users():
-    return jsonify(users=[public_user(item) for item in load_users()])
+    host = PUBLIC_HOST or request.host.split(":", 1)[0]
+    users = []
+    for item in load_users():
+        result = public_user(item)
+        result["ssr_link"] = ssr_link(item, host)
+        users.append(result)
+    return jsonify(users=users)
 
 
 @app.post("/api/users")
@@ -333,6 +359,23 @@ def api_users_reset(port):
             item["d"] = 0
             save_users(users)
             return jsonify(ok=True)
+    return jsonify(error="用户不存在"), 404
+
+
+@app.post("/api/users/<int:port>/toggle")
+@login_required
+def api_users_toggle(port):
+    require_csrf()
+    users = load_users()
+    for item in users:
+        if int(item.get("port", 0)) == port:
+            payload = request.get_json(silent=True) or {}
+            if "enable" in payload:
+                item["enable"] = 1 if payload["enable"] else 0
+            else:
+                item["enable"] = 0 if item.get("enable", 1) else 1
+            save_users(users)
+            return jsonify(ok=True, enable=item["enable"])
     return jsonify(error="用户不存在"), 404
 
 

@@ -57,6 +57,7 @@ export SSR_PANEL_DRY_RUN=1
 | `SSR_LOG_PATH` | SSR 文本日志路径；设置后优先于 journalctl | 无 |
 | `SSR_PANEL_BIND` | 面板监听地址 | `127.0.0.1` |
 | `SSR_PANEL_PORT` | 面板监听端口 | `6677` |
+| `SSR_PUBLIC_HOST` | SSR 链接使用的服务器 IP 或域名；留空时使用面板访问地址 | 留空 |
 | `SSR_PANEL_HTTPS` | HTTPS 反代时设为 `1`，启用 Secure Cookie | `0` |
 | `SSR_PANEL_DRY_RUN` | 设为 `1` 时不执行服务控制命令 | `0` |
 

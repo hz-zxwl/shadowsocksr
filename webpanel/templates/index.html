@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SSR Panel</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='features.css') }}">
 </head>
 <body data-csrf="{{ csrf_token }}">
   <aside class="sidebar">
@@ -56,7 +57,10 @@
       <article class="panel table-panel">
         <div class="panel-heading">
           <div><h2>用户列表</h2><p>直接兼容现有 mudb.json 数据</p></div>
-          <button id="addUserButton" class="primary">＋ 新增用户</button>
+          <div class="user-toolbar">
+            <label class="search-box"><span>⌕</span><input id="userSearch" placeholder="搜索客户备注"></label>
+            <button id="addUserButton" class="primary">＋ 新增用户</button>
+          </div>
         </div>
         <div class="table-wrap">
           <table><thead><tr><th>备注</th><th>端口</th><th>加密 / 协议</th><th>流量</th><th>状态</th><th class="right">操作</th></tr></thead><tbody id="userRows"></tbody></table>
