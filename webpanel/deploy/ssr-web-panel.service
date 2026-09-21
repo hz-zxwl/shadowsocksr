@@ -1,0 +1,17 @@
+[Unit]
+Description=ShadowsocksR Web Panel
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=@@PANEL_DIR@@
+EnvironmentFile=/etc/ssr-panel.env
+ExecStart=@@VENV_DIR@@/bin/gunicorn --workers 2 --bind 127.0.0.1:6677 --access-logfile - app:app
+Restart=on-failure
+RestartSec=3
+PrivateTmp=true
+NoNewPrivileges=false
+
+[Install]
+WantedBy=multi-user.target
+
