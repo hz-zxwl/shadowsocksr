@@ -75,16 +75,27 @@ function randomPassword() {
   return btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, "").slice(0, 14);
 }
 
+function setSelectValue(selector, value) {
+  const select = $(selector);
+  if (![...select.options].some(option => option.value === value)) {
+    const option = new Option(`${value}（现有配置）`, value);
+    option.dataset.legacy = "1";
+    select.add(option);
+  }
+  select.value = value;
+}
+
 function openUser(user = null) {
+  if (!user) $$('option[data-legacy="1"]').forEach(option => option.remove());
   $("#modalTitle").textContent = user ? "编辑用户" : "新增用户";
   $("#originalPort").value = user?.port || "";
   $("#userName").value = user?.user || "";
   $("#userPort").value = user?.port || Math.floor(10000 + Math.random() * 50000);
   $("#userPassword").value = user?.passwd || randomPassword();
-  $("#userMethod").value = user?.method || "aes-128-ctr";
-  $("#userProtocol").value = user?.protocol || "auth_aes128_md5";
-  $("#userObfs").value = user?.obfs || "tls1.2_ticket_auth_compatible";
-  $("#userTransfer").value = user?.transfer_gb ?? 100;
+  setSelectValue("#userMethod", user?.method || "none");
+  setSelectValue("#userProtocol", user?.protocol || "auth_chain_a");
+  setSelectValue("#userObfs", user?.obfs || "plain");
+  $("#userTransfer").value = user?.transfer_gb ?? 50;
   $("#userEnabled").checked = user ? Boolean(user.enable) : true;
   $("#formError").classList.add("hidden");
   $("#modal").classList.remove("hidden");
@@ -137,4 +148,3 @@ $("#userRows").addEventListener("click", async event => {
 });
 
 loadStatus(); setInterval(loadStatus, 15000);
-

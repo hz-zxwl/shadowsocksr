@@ -85,7 +85,7 @@
         <label>加密方式<select id="userMethod">{% for item in methods %}<option>{{ item }}</option>{% endfor %}</select></label>
         <label>协议<select id="userProtocol">{% for item in protocols %}<option>{{ item }}</option>{% endfor %}</select></label>
         <label>混淆<select id="userObfs">{% for item in obfs_list %}<option>{{ item }}</option>{% endfor %}</select></label>
-        <label>总流量（GB）<input id="userTransfer" type="number" min="0" max="1048576" value="100"></label>
+        <label>总流量（GB）<input id="userTransfer" type="number" min="0" max="1048576" value="50"></label>
         <label class="toggle-label">启用<input id="userEnabled" type="checkbox" checked><span class="toggle"></span></label>
       </div>
       <div id="formError" class="alert error hidden"></div>
@@ -97,4 +97,3 @@
   <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
-

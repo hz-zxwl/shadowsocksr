@@ -46,9 +46,12 @@ app.config.update(
 _mudb_lock = threading.RLock()
 _boot_time = time.time()
 
-METHODS = ["none", "aes-128-ctr", "aes-192-ctr", "aes-256-ctr", "aes-128-cfb", "aes-256-cfb", "chacha20", "chacha20-ietf"]
-PROTOCOLS = ["origin", "auth_sha1_v4", "auth_aes128_md5", "auth_aes128_sha1", "auth_chain_a", "auth_chain_b"]
-OBFS = ["plain", "http_simple", "http_simple_compatible", "tls1.2_ticket_auth", "tls1.2_ticket_auth_compatible"]
+METHODS = ["none"]
+PROTOCOLS = ["auth_chain_a"]
+OBFS = ["plain"]
+ALLOWED_METHODS = METHODS + ["aes-128-ctr", "aes-192-ctr", "aes-256-ctr", "aes-128-cfb", "aes-256-cfb", "chacha20", "chacha20-ietf"]
+ALLOWED_PROTOCOLS = PROTOCOLS + ["origin", "auth_sha1_v4", "auth_aes128_md5", "auth_aes128_sha1", "auth_chain_b"]
+ALLOWED_OBFS = OBFS + ["http_simple", "http_simple_compatible", "tls1.2_ticket_auth", "tls1.2_ticket_auth_compatible"]
 
 
 def login_required(fn):
@@ -124,11 +127,11 @@ def clean_text(data, key, max_len, default=""):
 def normalize_user(data, existing=None):
     current = dict(existing or {})
     port = int_value(data, "port", 1, 65535, current.get("port", 0))
-    transfer_gb = int_value(data, "transfer_gb", 0, 1024 * 1024, int(current.get("transfer_enable", 0) / 1024**3))
-    method = clean_text(data, "method", 64, current.get("method", "aes-128-ctr"))
-    protocol = clean_text(data, "protocol", 64, current.get("protocol", "auth_aes128_md5"))
-    obfs = clean_text(data, "obfs", 64, current.get("obfs", "tls1.2_ticket_auth_compatible"))
-    if method not in METHODS or protocol not in PROTOCOLS or obfs not in OBFS:
+    transfer_gb = int_value(data, "transfer_gb", 0, 1024 * 1024, int(current.get("transfer_enable", 50 * 1024**3) / 1024**3))
+    method = clean_text(data, "method", 64, current.get("method", "none"))
+    protocol = clean_text(data, "protocol", 64, current.get("protocol", "auth_chain_a"))
+    obfs = clean_text(data, "obfs", 64, current.get("obfs", "plain"))
+    if method not in ALLOWED_METHODS or protocol not in ALLOWED_PROTOCOLS or obfs not in ALLOWED_OBFS:
         raise ValueError("unsupported method, protocol, or obfs")
     current.update(
         user=clean_text(data, "user", 80, current.get("user", f"user-{port}")) or f"user-{port}",

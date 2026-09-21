@@ -38,8 +38,8 @@ class PanelTest(unittest.TestCase):
         headers = {"X-CSRF-Token": token}
         payload = {
             "user": "demo", "port": 32123, "passwd": "secret123",
-            "method": "aes-128-ctr", "protocol": "auth_aes128_md5",
-            "obfs": "tls1.2_ticket_auth_compatible", "transfer_gb": 30, "enable": True,
+            "method": "none", "protocol": "auth_chain_a",
+            "obfs": "plain", "transfer_gb": 30, "enable": True,
         }
         response = self.client.post("/api/users", json=payload, headers=headers)
         self.assertEqual(response.status_code, 201)
@@ -73,4 +73,3 @@ class PanelTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
