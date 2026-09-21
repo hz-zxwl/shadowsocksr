@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>登录 · SSR Panel</title>
+  <title>登录 · ZX Console</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body class="login-page">
   <main class="login-card">
     <div class="brand-mark">S</div>
-    <h1>SSR Panel</h1>
-    <p class="muted">安全、轻量的 ShadowsocksR 管理面板</p>
+    <h1>ZX Console</h1>
+    <p class="muted">安全、轻量的服务管理控制台</p>
     {% if error %}<div class="alert error">{{ error }}</div>{% endif %}
     {% if not configured %}<div class="alert warning">请先设置 SSR_PANEL_PASSWORD 环境变量。</div>{% endif %}
     <form method="post" action="{{ url_for('login_post') }}" class="login-form">
@@ -21,4 +21,3 @@
   </main>
 </body>
 </html>
-

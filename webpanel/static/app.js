@@ -62,7 +62,7 @@ async function loadStatus() {
     $("#servicePill").textContent = service.active ? "运行中" : service.status;
     $("#servicePill").className = `pill ${service.active ? "ok" : "bad"}`;
     $("#statusDot").className = `status-dot ${service.active ? "ok" : "bad"}`;
-    $("#serviceText").textContent = service.active ? "ShadowsocksR 正在运行" : "ShadowsocksR 未运行";
+    $("#serviceText").textContent = service.active ? "后台服务正在运行" : "后台服务未运行";
     $("#serviceDetail").textContent = `${service.status}${service.detail ? ` · ${service.detail}` : ""}`;
   } catch (error) { toast(error.message, true); }
 }
@@ -77,7 +77,7 @@ function renderUsers() {
   for (const user of visibleUsers) {
     const tr = document.createElement("tr");
     const percent = user.transfer_enable ? Math.min(100, Math.round(user.used / user.transfer_enable * 100)) : 0;
-    tr.innerHTML = `<td><strong>${escapeHtml(user.user || "-")}</strong></td><td><code>${user.port}</code></td><td>${escapeHtml(user.method || "-")}<br><small>${escapeHtml(user.protocol || "-")} · ${escapeHtml(user.obfs || "-")}</small></td><td>${humanBytes(user.used)} / ${humanBytes(user.transfer_enable)}<br><small>${percent}%</small></td><td><label class="table-toggle" title="${user.enable ? "点击关闭" : "点击启用"}"><input type="checkbox" data-toggle="${user.port}" ${user.enable ? "checked" : ""}><span class="toggle"></span><em>${user.enable ? "启用" : "关闭"}</em></label></td><td class="right"><div class="actions"><button class="action-button" data-copy="${user.port}">SSR链接</button><button class="action-button" data-edit="${user.port}">编辑</button><button class="action-button" data-reset="${user.port}">清流量</button><button class="action-button delete" data-delete="${user.port}">删除</button></div></td>`;
+    tr.innerHTML = `<td><strong>${escapeHtml(user.user || "-")}</strong></td><td><code>${user.port}</code></td><td>${escapeHtml(user.method || "-")}<br><small>${escapeHtml(user.protocol || "-")} · ${escapeHtml(user.obfs || "-")}</small></td><td>${humanBytes(user.used)} / ${humanBytes(user.transfer_enable)}<br><small>${percent}%</small></td><td><label class="table-toggle" title="${user.enable ? "点击关闭" : "点击启用"}"><input type="checkbox" data-toggle="${user.port}" ${user.enable ? "checked" : ""}><span class="toggle"></span><em>${user.enable ? "启用" : "关闭"}</em></label></td><td class="right"><div class="actions"><button class="action-button" data-copy="${user.port}">复制链接</button><button class="action-button" data-edit="${user.port}">编辑</button><button class="action-button" data-reset="${user.port}">清流量</button><button class="action-button delete" data-delete="${user.port}">删除</button></div></td>`;
     rows.appendChild(tr);
   }
 }
@@ -169,7 +169,7 @@ $("#userRows").addEventListener("click", async event => {
     try {
       const copied = await copyText(user.ssr_link);
       if (!copied) throw new Error("copy failed");
-      toast("SSR 链接已复制");
+      toast("链接已复制");
     } catch (_) { toast("复制失败，请检查浏览器剪贴板权限", true); }
   }
   if (edit) openUser(state.users.find(user => user.port === Number(edit.dataset.edit)));
