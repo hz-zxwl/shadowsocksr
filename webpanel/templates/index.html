@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ZX Console</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260922-4">
-  <link rel="stylesheet" href="{{ url_for('static', filename='features.css') }}?v=20260922-4">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260922-5">
+  <link rel="stylesheet" href="{{ url_for('static', filename='features.css') }}?v=20260922-5">
 </head>
 <body data-csrf="{{ csrf_token }}">
   <aside class="sidebar">
@@ -56,7 +56,7 @@
     <section id="usersView" class="view">
       <article class="panel table-panel">
         <div class="panel-heading">
-          <div><h2>用户列表</h2><p>直接兼容现有 mudb.json 数据</p></div>
+          <div><div class="user-list-title"><h2>用户列表</h2><span id="userTotalBadge" class="count-badge">共 -- 位用户</span></div><p>直接兼容现有 mudb.json 数据</p></div>
           <div class="user-toolbar">
             <label class="search-box"><span>⌕</span><input id="userSearch" placeholder="搜索客户备注"></label>
             <button id="addUserButton" class="primary">＋ 新增用户</button>
@@ -111,6 +111,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="{{ url_for('static', filename='app.js') }}?v=20260922-4"></script>
+  <script src="{{ url_for('static', filename='app.js') }}?v=20260922-5"></script>
 </body>
 </html>
