@@ -215,7 +215,7 @@ $("#userSearch").addEventListener("input", renderUsers);
 $("#randomPassword").addEventListener("click", () => $("#userPassword").value = randomPassword());
 $("#userForm").addEventListener("submit", saveUser);
 $('[data-close-modal]').forEach(item => item.addEventListener('click', closeModal));
-$('[data-cancel-delete]').forEach(item => item.addEventListener('click', closeDeleteConfirm));
+document.querySelectorAll('[data-cancel-delete]').forEach(item => item.addEventListener('click', closeDeleteConfirm));
 $("#confirmDeleteButton").addEventListener("click", deleteConfirmedUser);
 $("#refreshLogs").addEventListener("click", loadLogs);
 $$('.service-action').forEach(button => button.addEventListener('click', async () => {
