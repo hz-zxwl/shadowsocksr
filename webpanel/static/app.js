@@ -1,5 +1,5 @@
 const csrf = document.body.dataset.csrf;
-const state = { users: [] };
+const state = { users: [], pendingDeletePort: null };
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 
@@ -143,6 +143,48 @@ function openUser(user = null) {
 
 function closeModal() { $("#modal").classList.add("hidden"); }
 
+function openDeleteConfirm(port) {
+  const user = state.users.find(item => Number(item.port) === Number(port));
+  state.pendingDeletePort = Number(port);
+  $("#deleteConfirmText").textContent = user
+    ? `确定删除“${user.user || "未命名用户"}”（端口 ${port}）吗？删除后无法恢复。`
+    : `确定删除端口 ${port} 的用户吗？删除后无法恢复。`;
+  $("#deleteConfirmModal").classList.remove("hidden");
+}
+
+function closeDeleteConfirm() {
+  if ($("#confirmDeleteButton").disabled) return;
+  state.pendingDeletePort = null;
+  $("#deleteConfirmModal").classList.add("hidden");
+}
+
+async function deleteConfirmedUser() {
+  const port = state.pendingDeletePort;
+  if (!port) return;
+  const button = $("#confirmDeleteButton");
+  let deleteError = null;
+  button.disabled = true;
+  button.textContent = "正在删除…";
+  try {
+    await api(`/api/users/${port}`, { method: "DELETE", body: "{}" });
+  } catch (error) {
+    deleteError = error;
+  }
+  try {
+    const deleted = await verifyUserDeleted(port);
+    if (!deleted) throw deleteError || new Error("删除未生效，请重试");
+    state.pendingDeletePort = null;
+    $("#deleteConfirmModal").classList.add("hidden");
+    loadStatus();
+    toast("用户已删除");
+  } catch (error) {
+    toast((deleteError || error).message, true);
+  } finally {
+    button.disabled = false;
+    button.textContent = "确认删除";
+  }
+}
+
 async function saveUser(event) {
   event.preventDefault();
   const originalPort = $("#originalPort").value;
@@ -172,7 +214,9 @@ $("#addUserButton").addEventListener("click", () => openUser());
 $("#userSearch").addEventListener("input", renderUsers);
 $("#randomPassword").addEventListener("click", () => $("#userPassword").value = randomPassword());
 $("#userForm").addEventListener("submit", saveUser);
-$$('[data-close-modal]').forEach(item => item.addEventListener('click', closeModal));
+$('[data-close-modal]').forEach(item => item.addEventListener('click', closeModal));
+$('[data-cancel-delete]').forEach(item => item.addEventListener('click', closeDeleteConfirm));
+$("#confirmDeleteButton").addEventListener("click", deleteConfirmedUser);
 $("#refreshLogs").addEventListener("click", loadLogs);
 $$('.service-action').forEach(button => button.addEventListener('click', async () => {
   if (button.dataset.action === "stop" && !confirm("确定停止 ShadowsocksR 服务吗？")) return;
@@ -193,26 +237,7 @@ $("#userRows").addEventListener("click", async event => {
   }
   if (edit) openUser(state.users.find(user => user.port === Number(edit.dataset.edit)));
   if (reset && confirm("确定清零该用户的上传和下载流量吗？")) { try { await api(`/api/users/${reset.dataset.reset}/reset-traffic`, { method: "POST", body: "{}" }); await Promise.all([loadUsers(), loadStatus()]); toast("流量已清零"); } catch (error) { toast(error.message, true); } }
-  if (remove) {
-    const port = Number(remove.dataset.delete);
-    let deleteError = null;
-    remove.disabled = true;
-    try {
-      await api(`/api/users/${port}`, { method: "DELETE", body: "{}" });
-    } catch (error) {
-      deleteError = error;
-    }
-    try {
-      const deleted = await verifyUserDeleted(port);
-      if (!deleted) throw deleteError || new Error("删除未生效，请重试");
-      loadStatus();
-      toast("用户已删除");
-    } catch (error) {
-      toast((deleteError || error).message, true);
-    } finally {
-      remove.disabled = false;
-    }
-  }
+  if (remove) openDeleteConfirm(remove.dataset.delete);
 });
 
 $("#userRows").addEventListener("change", async event => {
