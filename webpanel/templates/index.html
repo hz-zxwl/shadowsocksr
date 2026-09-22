@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ZX Console</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='features.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260922-3">
+  <link rel="stylesheet" href="{{ url_for('static', filename='features.css') }}?v=20260922-3">
 </head>
 <body data-csrf="{{ csrf_token }}">
   <aside class="sidebar">
@@ -111,6 +111,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  <script src="{{ url_for('static', filename='app.js') }}?v=20260922-3"></script>
 </body>
 </html>
