@@ -91,6 +91,25 @@ async function loadUsers() {
   catch (error) { toast(error.message, true); }
 }
 
+function wait(milliseconds) {
+  return new Promise(resolve => setTimeout(resolve, milliseconds));
+}
+
+async function verifyUserDeleted(port) {
+  let lastError = null;
+  for (const delay of [0, 500, 1200]) {
+    if (delay) await wait(delay);
+    try {
+      state.users = (await api("/api/users")).users;
+      renderUsers();
+      return !state.users.some(user => Number(user.port) === Number(port));
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError || new Error("无法确认删除结果，请刷新页面后查看");
+}
+
 function randomPassword() {
   const bytes = crypto.getRandomValues(new Uint8Array(12));
   return btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, "").slice(0, 14);
@@ -174,7 +193,26 @@ $("#userRows").addEventListener("click", async event => {
   }
   if (edit) openUser(state.users.find(user => user.port === Number(edit.dataset.edit)));
   if (reset && confirm("确定清零该用户的上传和下载流量吗？")) { try { await api(`/api/users/${reset.dataset.reset}/reset-traffic`, { method: "POST", body: "{}" }); await Promise.all([loadUsers(), loadStatus()]); toast("流量已清零"); } catch (error) { toast(error.message, true); } }
-  if (remove && confirm("确定删除该用户吗？此操作无法撤销。")) { try { await api(`/api/users/${remove.dataset.delete}`, { method: "DELETE", body: "{}" }); await Promise.all([loadUsers(), loadStatus()]); toast("用户已删除"); } catch (error) { toast(error.message, true); } }
+  if (remove && confirm("确定删除该用户吗？此操作无法撤销。")) {
+    const port = Number(remove.dataset.delete);
+    let deleteError = null;
+    remove.disabled = true;
+    try {
+      await api(`/api/users/${port}`, { method: "DELETE", body: "{}" });
+    } catch (error) {
+      deleteError = error;
+    }
+    try {
+      const deleted = await verifyUserDeleted(port);
+      if (!deleted) throw deleteError || new Error("删除未生效，请重试");
+      loadStatus();
+      toast("用户已删除");
+    } catch (error) {
+      toast((deleteError || error).message, true);
+    } finally {
+      remove.disabled = false;
+    }
+  }
 });
 
 $("#userRows").addEventListener("change", async event => {
