@@ -72,6 +72,9 @@ function renderUsers() {
   rows.innerHTML = "";
   const keyword = $("#userSearch").value.trim().toLocaleLowerCase();
   const visibleUsers = state.users.filter(user => String(user.user || "").toLocaleLowerCase().includes(keyword));
+  $("#userTotalBadge").textContent = keyword
+    ? `找到 ${visibleUsers.length} / 共 ${state.users.length} 位`
+    : `共 ${state.users.length} 位用户`;
   $("#emptyUsers").textContent = keyword ? "没有找到匹配的客户备注。" : "暂无用户，点击“新增用户”开始。";
   $("#emptyUsers").classList.toggle("hidden", visibleUsers.length > 0);
   for (const user of visibleUsers) {
