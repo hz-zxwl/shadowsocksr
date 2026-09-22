@@ -1,0 +1,16 @@
+[Unit]
+Description=ShadowsocksR Web Panel
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=@@PANEL_DIR@@
+EnvironmentFile=/etc/ssr-panel.env
+ExecStart=@@VENV_DIR@@/bin/gunicorn -c gunicorn.conf.py app:app
+Restart=on-failure
+RestartSec=3
+PrivateTmp=true
+NoNewPrivileges=false
+
+[Install]
+WantedBy=multi-user.target

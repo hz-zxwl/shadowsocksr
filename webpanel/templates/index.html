@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ZX Console</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260922-3">
+  <link rel="stylesheet" href="{{ url_for('static', filename='features.css') }}?v=20260922-3">
+</head>
+<body data-csrf="{{ csrf_token }}">
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-mark small">Z</span><span>ZX Console</span></div>
+    <nav>
+      <button class="nav-item active" data-view="dashboard"><span>◫</span> 系统状态</button>
+      <button class="nav-item" data-view="users"><span>♙</span> 用户列表</button>
+      <button class="nav-item" data-view="logs"><span>≡</span> 运行日志</button>
+    </nav>
+    <form method="post" action="{{ url_for('logout') }}" class="logout-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="nav-item" type="submit"><span>↪</span> 退出登录</button>
+    </form>
+  </aside>
+
+  <main class="content">
+    <header class="topbar">
+      <button id="menuButton" class="icon-button">☰</button>
+      <div><h1 id="pageTitle">系统状态</h1><p>服务管理控制台</p></div>
+      <span id="servicePill" class="pill neutral">检测中</span>
+    </header>
+
+    <section id="dashboardView" class="view active">
+      <div class="metric-grid">
+        <article class="metric-card"><div class="metric-icon blue">◔</div><div><span>系统负载</span><strong id="loadMetric">--</strong><small>1 / 5 / 15 分钟</small></div></article>
+        <article class="metric-card"><div class="metric-icon purple">▥</div><div><span>内存使用</span><strong id="memoryMetric">--</strong><small id="memoryDetail">--</small></div></article>
+        <article class="metric-card"><div class="metric-icon orange">◉</div><div><span>硬盘使用</span><strong id="diskMetric">--</strong><small id="diskDetail">--</small></div></article>
+        <article class="metric-card"><div class="metric-icon green">♙</div><div><span>用户数量</span><strong id="userMetric">--</strong><small>当前入站用户</small></div></article>
+      </div>
+
+      <div class="two-column">
+        <article class="panel">
+          <div class="panel-heading"><div><h2>服务控制</h2><p>启动、停止或重新加载后台服务</p></div></div>
+          <div class="service-state"><span id="statusDot" class="status-dot"></span><div><strong id="serviceText">正在检测服务状态</strong><p id="serviceDetail">systemd · shadowsocksr</p></div></div>
+          <div class="button-row">
+            <button class="primary service-action" data-action="start">启动</button>
+            <button class="secondary service-action" data-action="restart">重启</button>
+            <button class="danger service-action" data-action="stop">停止</button>
+          </div>
+        </article>
+        <article class="panel">
+          <div class="panel-heading"><div><h2>流量汇总</h2><p>所有用户累计上行与下行</p></div></div>
+          <div class="traffic-row"><div><span>↑ 上传</span><strong id="uploadTotal">--</strong></div><div><span>↓ 下载</span><strong id="downloadTotal">--</strong></div></div>
+        </article>
+      </div>
+    </section>
+
+    <section id="usersView" class="view">
+      <article class="panel table-panel">
+        <div class="panel-heading">
+          <div><h2>用户列表</h2><p>直接兼容现有 mudb.json 数据</p></div>
+          <div class="user-toolbar">
+            <label class="search-box"><span>⌕</span><input id="userSearch" placeholder="搜索客户备注"></label>
+            <button id="addUserButton" class="primary">＋ 新增用户</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>备注</th><th>端口</th><th>加密 / 协议</th><th>流量</th><th>状态</th><th class="right">操作</th></tr></thead><tbody id="userRows"></tbody></table>
+        </div>
+        <div id="emptyUsers" class="empty hidden">暂无用户，点击“新增用户”开始。</div>
+      </article>
+    </section>
+
+    <section id="logsView" class="view">
+      <article class="panel">
+        <div class="panel-heading"><div><h2>运行日志</h2><p>最近的后台服务日志</p></div><button id="refreshLogs" class="secondary">刷新</button></div>
+        <pre id="logOutput" class="logs">正在加载日志…</pre>
+      </article>
+    </section>
+  </main>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-backdrop" data-close-modal></div>
+    <form id="userForm" class="modal-card">
+      <div class="modal-heading"><div><h2 id="modalTitle">新增用户</h2><p>填写 SSR 入站参数</p></div><button type="button" class="icon-button" data-close-modal>×</button></div>
+      <input type="hidden" id="originalPort">
+      <div class="form-grid">
+        <label>备注<input id="userName" maxlength="80" placeholder="例如：客户 A"></label>
+        <label>端口<input id="userPort" type="number" min="1" max="65535" required></label>
+        <label class="full">密码<div class="input-action"><input id="userPassword" maxlength="128" required><button id="randomPassword" type="button">随机</button></div></label>
+        <label>加密方式<select id="userMethod">{% for item in methods %}<option>{{ item }}</option>{% endfor %}</select></label>
+        <label>协议<select id="userProtocol">{% for item in protocols %}<option>{{ item }}</option>{% endfor %}</select></label>
+        <label>混淆<select id="userObfs">{% for item in obfs_list %}<option>{{ item }}</option>{% endfor %}</select></label>
+        <label>总流量（GB）<input id="userTransfer" type="number" min="0" max="1048576" value="50"></label>
+        <label class="toggle-label">启用<input id="userEnabled" type="checkbox" checked><span class="toggle"></span></label>
+      </div>
+      <div id="formError" class="alert error hidden"></div>
+      <div class="modal-actions"><button type="button" class="secondary" data-close-modal>取消</button><button type="submit" class="primary">保存用户</button></div>
+    </form>
+  </div>
+
+  <div id="deleteConfirmModal" class="modal hidden">
+    <div class="modal-backdrop" data-cancel-delete></div>
+    <div class="modal-card confirm-card" role="dialog" aria-modal="true" aria-labelledby="deleteConfirmTitle">
+      <div class="confirm-icon">!</div>
+      <h2 id="deleteConfirmTitle">确认删除用户？</h2>
+      <p id="deleteConfirmText">删除后将无法恢复，请确认是否继续。</p>
+      <div class="modal-actions confirm-actions">
+        <button type="button" class="secondary" data-cancel-delete>取消</button>
+        <button type="button" class="confirm-delete-button" id="confirmDeleteButton">确认删除</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="{{ url_for('static', filename='app.js') }}?v=20260922-3"></script>
+</body>
+</html>

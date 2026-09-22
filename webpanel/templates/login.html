@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>登录 · ZX Console</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="login-page">
+  <main class="login-card">
+    <div class="brand-mark">S</div>
+    <h1>ZX Console</h1>
+    <p class="muted">安全、轻量的服务管理控制台</p>
+    {% if error %}<div class="alert error">{{ error }}</div>{% endif %}
+    {% if not configured %}<div class="alert warning">请先设置 SSR_PANEL_PASSWORD 环境变量。</div>{% endif %}
+    <form method="post" action="{{ url_for('login_post') }}" class="login-form">
+      <label>用户名<input name="username" autocomplete="username" value="admin" required></label>
+      <label>密码<input name="password" type="password" autocomplete="current-password" required></label>
+      <button class="primary wide" type="submit">登录面板</button>
+    </form>
+  </main>
+</body>
+</html>

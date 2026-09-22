@@ -1,4 +1,6 @@
 *.py[co]
+webpanel/.venv/
+webpanel/.env
 
 # Packages
 *.egg
