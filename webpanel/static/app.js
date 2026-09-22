@@ -1,7 +1,7 @@
 const csrf = document.body.dataset.csrf;
 const state = { users: [], pendingDeletePort: null };
 const $ = (selector) => document.querySelector(selector);
-const $$ = (selector) => [...document.querySelectorAll(selector)];
+const selectAll = (selector) => [...document.querySelectorAll(selector)];
 
 function humanBytes(bytes) {
   if (!Number.isFinite(Number(bytes)) || Number(bytes) <= 0) return "0 B";
@@ -126,7 +126,7 @@ function setSelectValue(selector, value) {
 }
 
 function openUser(user = null) {
-  if (!user) $$('option[data-legacy="1"]').forEach(option => option.remove());
+  if (!user) selectAll('option[data-legacy="1"]').forEach(option => option.remove());
   $("#modalTitle").textContent = user ? "编辑用户" : "新增用户";
   $("#originalPort").value = user?.port || "";
   $("#userName").value = user?.user || "";
@@ -201,9 +201,9 @@ async function loadLogs() {
   catch (error) { $("#logOutput").textContent = error.message; }
 }
 
-$$('.nav-item[data-view]').forEach(button => button.addEventListener('click', () => {
-  $$('.nav-item[data-view]').forEach(item => item.classList.remove('active')); button.classList.add('active');
-  $$('.view').forEach(view => view.classList.remove('active')); $(`#${button.dataset.view}View`).classList.add('active');
+selectAll('.nav-item[data-view]').forEach(button => button.addEventListener('click', () => {
+  selectAll('.nav-item[data-view]').forEach(item => item.classList.remove('active')); button.classList.add('active');
+  selectAll('.view').forEach(view => view.classList.remove('active')); $(`#${button.dataset.view}View`).classList.add('active');
   $("#pageTitle").textContent = { dashboard: "系统状态", users: "用户列表", logs: "运行日志" }[button.dataset.view];
   if (button.dataset.view === "users") loadUsers(); if (button.dataset.view === "logs") loadLogs();
   $(".sidebar").classList.remove("open");
@@ -214,11 +214,11 @@ $("#addUserButton").addEventListener("click", () => openUser());
 $("#userSearch").addEventListener("input", renderUsers);
 $("#randomPassword").addEventListener("click", () => $("#userPassword").value = randomPassword());
 $("#userForm").addEventListener("submit", saveUser);
-$('[data-close-modal]').forEach(item => item.addEventListener('click', closeModal));
+document.querySelectorAll('[data-close-modal]').forEach(item => item.addEventListener('click', closeModal));
 document.querySelectorAll('[data-cancel-delete]').forEach(item => item.addEventListener('click', closeDeleteConfirm));
 $("#confirmDeleteButton").addEventListener("click", deleteConfirmedUser);
 $("#refreshLogs").addEventListener("click", loadLogs);
-$$('.service-action').forEach(button => button.addEventListener('click', async () => {
+selectAll('.service-action').forEach(button => button.addEventListener('click', async () => {
   if (button.dataset.action === "stop" && !confirm("确定停止 ShadowsocksR 服务吗？")) return;
   button.disabled = true;
   try { await api(`/api/service/${button.dataset.action}`, { method: "POST", body: "{}" }); toast("服务命令已执行"); setTimeout(loadStatus, 700); }
