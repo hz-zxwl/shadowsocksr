@@ -193,7 +193,7 @@ $("#userRows").addEventListener("click", async event => {
   }
   if (edit) openUser(state.users.find(user => user.port === Number(edit.dataset.edit)));
   if (reset && confirm("确定清零该用户的上传和下载流量吗？")) { try { await api(`/api/users/${reset.dataset.reset}/reset-traffic`, { method: "POST", body: "{}" }); await Promise.all([loadUsers(), loadStatus()]); toast("流量已清零"); } catch (error) { toast(error.message, true); } }
-  if (remove && confirm("确定删除该用户吗？此操作无法撤销。")) {
+  if (remove) {
     const port = Number(remove.dataset.delete);
     let deleteError = null;
     remove.disabled = true;
